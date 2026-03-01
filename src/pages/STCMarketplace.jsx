@@ -78,6 +78,7 @@ const STCMarketplace = () => {
     } catch (err) {
       console.error(err);
     }
+    setSizeError("");
   };
 
   const totalSize = allFiles.reduce((acc, f) => acc + f.size, 0);
