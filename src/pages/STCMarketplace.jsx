@@ -2,17 +2,19 @@ import dhmarketplaceServiceInstance from "../services/DHMarketPlaceServices";
 import "./STCMarketplace.css";
 import { useState } from "react";
 
-const MAX_TOTAL_SIZE_MB = 5;
-const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
+const MAX_BATCH_SIZE_MB = 5;
+const MAX_BATCH_SIZE_BYTES = MAX_BATCH_SIZE_MB * 1024 * 1024;
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
 
 const STCMarketplace = () => {
-
-  const [formData, setFormData] = useState({
-    image: [],
-  });
+  const [allFiles, setAllFiles] = useState([]);
   const [sizeError, setSizeError] = useState("");
 
-  // Convert file to base64
   const fileToBase64 = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -31,52 +33,58 @@ const STCMarketplace = () => {
 
       if (response?.data?.productCreationResponse?.success) {
         alert("Product Added Successfully");
+        setAllFiles([]);
       } else {
         throw new Error("Product Adding Failed!!");
       }
     } catch (error) {
       console.error("API Error:", error);
-      alert({ title: "Product Operation failed!" });
+      alert("Product Operation failed!");
     }
   };
 
   const handleImageChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    const totalSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
+    if (selectedFiles.length === 0) return;
 
-    if (totalSize > MAX_TOTAL_SIZE_BYTES) {
+    const batchSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
+
+    if (batchSize > MAX_BATCH_SIZE_BYTES) {
       setSizeError(
-        `Total image size exceeds ${MAX_TOTAL_SIZE_MB}MB. Please re-upload with smaller images.`
+        `This batch exceeds ${MAX_BATCH_SIZE_MB}MB (${formatFileSize(batchSize)}). Please re-upload with smaller images.`
       );
-      setFormData({ ...formData, image: [] });
-      e.target.value = ""; // reset file input
+      e.target.value = "";
       return;
     }
 
     setSizeError("");
-    setFormData({ ...formData, image: selectedFiles });
+    setAllFiles((prev) => [...prev, ...selectedFiles]); // append to existing
+    e.target.value = "";
+  };
+
+  const handleClearAll = () => {
+    setAllFiles([]);
+    setSizeError("");
   };
 
   const handleSave = async () => {
-    if (sizeError || formData.image.length === 0) return;
+    if (allFiles.length === 0) return;
 
     try {
       const base64Images = await Promise.all(
-        formData.image.map((file) => fileToBase64(file))
+        allFiles.map((file) => fileToBase64(file))
       );
-
-      const formatted = {
-        images: base64Images,
-      };
-
-      await onSave(formatted);
+      await onSave({ images: base64Images });
     } catch (err) {
       console.error(err);
     }
   };
 
+  const totalSize = allFiles.reduce((acc, f) => acc + f.size, 0);
+
   return (
     <>
+      {/* Upload Area */}
       <div className="contact-form-field uploadType">
         <p>Upload Images</p>
         <input
@@ -91,10 +99,58 @@ const STCMarketplace = () => {
           </p>
         )}
       </div>
-      <div className="flex justify-center">
+
+      {/* File Preview List */}
+      {allFiles.length > 0 && (
+        <div
+          style={{
+            marginTop: "16px",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "10px 14px",
+              backgroundColor: "#f8fafc",
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: "14px", color: "#374151" }}>
+              📁 {allFiles.length} file{allFiles.length > 1 ? "s" : ""} selected
+              &nbsp;·&nbsp;
+              <span style={{ color: "#6b7280", fontWeight: 400 }}>
+                {formatFileSize(totalSize)} total
+              </span>
+            </span>
+            <button
+              onClick={handleClearAll}
+              style={{
+                fontSize: "13px",
+                color: "#ef4444",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              ✕ Clear All
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* Save Button Only */}
+      <div className="flex justify-center" style={{ marginTop: "16px" }}>
         <button
           onClick={handleSave}
-          disabled={!!sizeError || formData.image.length === 0}
+          disabled={allFiles.length === 0}
           className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save
