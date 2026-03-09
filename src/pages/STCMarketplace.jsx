@@ -49,13 +49,13 @@ const STCMarketplace = () => {
 
     const batchSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
 
-    if (batchSize > MAX_BATCH_SIZE_BYTES) {
-      setSizeError(
-        `This batch exceeds ${MAX_BATCH_SIZE_MB}MB (${formatFileSize(batchSize)}). Please re-upload with smaller images.`
-      );
-      e.target.value = "";
-      return;
-    }
+    // if (batchSize > MAX_BATCH_SIZE_BYTES) {
+    //   setSizeError(
+    //     `This batch exceeds ${MAX_BATCH_SIZE_MB}MB (${formatFileSize(batchSize)}). Please re-upload with smaller images.`
+    //   );
+    //   e.target.value = "";
+    //   return;
+    // }
 
     setSizeError("");
     setAllFiles((prev) => [...prev, ...selectedFiles]); // append to existing
