@@ -1,9 +1,12 @@
 import dhmarketplaceServiceInstance from "../services/DHMarketPlaceServices";
 import "./STCMarketplace.css";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 
 const MAX_BATCH_SIZE_MB = 5;
 const MAX_BATCH_SIZE_BYTES = MAX_BATCH_SIZE_MB * 1024 * 1024;
+const MY_ID = sessionStorage.getItem("userId");
 
 const formatFileSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -14,6 +17,62 @@ const formatFileSize = (bytes) => {
 const STCMarketplace = () => {
   const [allFiles, setAllFiles] = useState([]);
   const [sizeError, setSizeError] = useState("");
+
+
+  const [lock, setLock] = useState({ locked: false, lockedBy: "" });
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const stompRef = useRef(null);
+  const xhrRef = useRef(null);
+
+  useEffect(() => {
+
+
+    console.log("INNNN");
+    
+    const client = new Client({
+      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      onConnect: () => {
+        // BUG FIX 1: was setting files instead of lock
+        client.subscribe("/topic/lock", (msg) => {
+          const data = JSON.parse(msg.body);
+          console.log("Lock update:", data);
+          setLock(data);
+        });
+
+        client.subscribe("/topic/files", (msg) => {
+          const data = JSON.parse(msg.body);
+          setFiles(Array.isArray(data) ? data : []);
+        });
+
+        // BUG FIX 2: was not returning r.json()
+        fetch("http://localhost:8080/api/lock/status")
+          .then(r => r.json())
+          .then((data) => {
+            console.log("Initial lock status:", data);
+            setLock(data);
+          });
+
+        fetch("http://localhost:8080/api/lock/files")
+          .then(r => r.json())
+          .then((data) => setFiles(Array.isArray(data) ? data : []));
+      },
+    });
+    client.activate();
+    stompRef.current = client;
+
+    window.addEventListener("beforeunload", () => {
+      fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+    });
+
+    return () => client.deactivate();
+  }, []);
+
+  const isSameUser = lock.lockedBy === MY_ID;
+  const isBlocked = lock.locked; // block everyone including same user
+
+
 
   const fileToBase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -43,7 +102,32 @@ const STCMarketplace = () => {
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
+
+
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (lock.locked) {
+      alert(`🔒 ${lock.lockedBy} is uploading. Please wait.`);
+      e.target.value = "";
+      return;
+    }
+
+    const res = await fetch(`http://localhost:8080/api/lock/acquire?userId=${MY_ID}`, { method: "POST" });
+    const { acquired } = await res.json();
+
+    if (!acquired) {
+      alert("Another user is uploading.");
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+
+
+
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
 
@@ -63,6 +147,13 @@ const STCMarketplace = () => {
   };
 
   const handleClearAll = () => {
+
+    if (xhrRef.current) xhrRef.current.abort();
+    fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+    setSelectedFile(null);
+    setUploading(false);
+
+
     setAllFiles([]);
     setSizeError("");
   };
@@ -87,13 +178,39 @@ const STCMarketplace = () => {
     <>
       {/* Upload Area */}
       <div className="contact-form-field uploadType">
+
+
+        <h2>File Upload</h2>
+
+        <p>My ID: {MY_ID}</p>
+        <p>Lock state: {JSON.stringify(lock)}</p>
+
+        {isBlocked && <p style={{ color: "red" }}>🔒 {lock.lockedBy} is uploading. Please wait...</p>}
+
+
         <p>Upload Images</p>
         <input
           type="file"
           accept="image/*"
           multiple
           onChange={handleImageChange}
+          onClick={(e) => {
+            if (isBlocked) {
+              e.preventDefault();
+              alert(`🔒 ${lock.lockedBy} is uploading. Please wait.`);
+            }
+          }}
         />
+
+
+        {/* Cancel button — shown as soon as file is selected OR lock is mine */}
+        {(selectedFile || uploading || isSameUser) && (
+          <button onClick={handleClearAll} style={{ color: "red", cursor: "pointer" }}>
+            ✖ Cancel
+          </button>
+        )}
+
+
         {sizeError && (
           <p style={{ color: "red", marginTop: "6px", fontSize: "14px" }}>
             ⚠️ {sizeError}
