@@ -32,7 +32,7 @@ const STCMarketplace = () => {
     console.log("INNNN");
 
     const client = new Client({
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      webSocketFactory: () => new SockJS("https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/ws"),
       onConnect: () => {
         client.subscribe("/topic/lock", (msg) => {
           const data = JSON.parse(msg.body);
@@ -45,14 +45,14 @@ const STCMarketplace = () => {
           setFiles(Array.isArray(data) ? data : []);
         });
 
-        fetch("http://localhost:8080/api/lock/status")
+        fetch("https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/status")
           .then((r) => r.json())
           .then((data) => {
             console.log("Initial lock status:", data);
             setLock(data);
           });
 
-        fetch("http://localhost:8080/api/lock/files")
+        fetch("https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/files")
           .then((r) => r.json())
           .then((data) => setFiles(Array.isArray(data) ? data : []));
       },
@@ -61,7 +61,7 @@ const STCMarketplace = () => {
     stompRef.current = client;
 
     window.addEventListener("beforeunload", () => {
-      fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+      fetch(`https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/release?userId=${MY_ID}`, { method: "POST" });
     });
 
     return () => client.deactivate();
@@ -108,7 +108,7 @@ const STCMarketplace = () => {
       return;
     }
 
-    const res = await fetch(`http://localhost:8080/api/lock/acquire?userId=${MY_ID}`, { method: "POST" });
+    const res = await fetch(`https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/acquire?userId=${MY_ID}`, { method: "POST" });
     const { acquired } = await res.json();
 
     if (!acquired) {
@@ -148,7 +148,7 @@ const STCMarketplace = () => {
 
   const handleClearAll = () => {
     if (xhrRef.current) xhrRef.current.abort();
-    fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+    fetch(`https://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/release?userId=${MY_ID}`, { method: "POST" });
     setSelectedFile(null);
     setUploading(false);
     setAllFiles([]);
