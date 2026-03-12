@@ -3,7 +3,6 @@ import { createKeycloakInstance } from "./SSOConfig";
 import { jwtDecode } from 'jwt-decode';
 import React from 'react';
 
-//@Author: Zohaib Ahmad
 const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {

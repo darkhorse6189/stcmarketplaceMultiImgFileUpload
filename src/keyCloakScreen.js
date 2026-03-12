@@ -588,7 +588,7 @@ export default function KeyClockScreen() {
 
     useEffect(() => {
         const client = new Client({
-            webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+            webSocketFactory: () => new SockJS("http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/ws"),
             onConnect: () => {
                 // BUG FIX 1: was setting files instead of lock
                 client.subscribe("/topic/lock", (msg) => {
@@ -603,14 +603,14 @@ export default function KeyClockScreen() {
                 });
 
                 // BUG FIX 2: was not returning r.json()
-                fetch("http://localhost:8080/api/lock/status")
+                fetch("http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/status")
                     .then(r => r.json())
                     .then((data) => {
                         console.log("Initial lock status:", data);
                         setLock(data);
                     });
 
-                fetch("http://localhost:8080/api/lock/files")
+                fetch("http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/files")
                     .then(r => r.json())
                     .then((data) => setFiles(Array.isArray(data) ? data : []));
             },
@@ -619,7 +619,7 @@ export default function KeyClockScreen() {
         stompRef.current = client;
 
         window.addEventListener("beforeunload", () => {
-            fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+            fetch(`http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/release?userId=${MY_ID}`, { method: "POST" });
         });
 
         return () => client.deactivate();
@@ -667,7 +667,7 @@ export default function KeyClockScreen() {
             return;
         }
 
-        const res = await fetch(`http://localhost:8080/api/lock/acquire?userId=${MY_ID}`, { method: "POST" });
+        const res = await fetch(`http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/acquire?userId=${MY_ID}`, { method: "POST" });
         const { acquired } = await res.json();
 
         if (!acquired) {
@@ -689,7 +689,7 @@ export default function KeyClockScreen() {
         const xhr = new XMLHttpRequest();
         xhrRef.current = xhr;
 
-        xhr.open("POST", "http://localhost:8080/api/lock/upload");
+        xhr.open("POST", "http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/upload");
         xhr.onload = () => {
             setUploading(false);
             setSelectedFile(null);
@@ -700,7 +700,7 @@ export default function KeyClockScreen() {
 
     const handleCancel = () => {
         if (xhrRef.current) xhrRef.current.abort();
-        fetch(`http://localhost:8080/api/lock/release?userId=${MY_ID}`, { method: "POST" });
+        fetch(`http://filelocking-0-rahul-uideployment.apps.nprdc-ocp.dhdigital.co.in/api/lock/release?userId=${MY_ID}`, { method: "POST" });
         setSelectedFile(null);
         setUploading(false);
     };
